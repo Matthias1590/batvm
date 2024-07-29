@@ -4,16 +4,18 @@ import * as helpers from "./helpers.js";
 class Chars implements cpu.Chars {
     #element;
     #buffer;
+    #toPush;
 
     constructor(element: HTMLElement) {
         this.#element = element;
         this.#buffer = "";
+        this.#toPush = "";
     }
 
     push(): void {
-        this.#element.innerText = this.#buffer;
+        this.#toPush = this.#buffer;
     }
-    
+
     clear(): void {
         this.#buffer = "";
     }
@@ -21,26 +23,29 @@ class Chars implements cpu.Chars {
     write(char: number): void {
         this.#buffer += String.fromCharCode(char);
     }
+
+    update(): void {
+        this.#element.innerText = this.#toPush;
+    }
 }
 
 class NumberDisplay implements cpu.NumberDisplay {
     #element;
     #signed;
+    #toPush: number | null;
 
     constructor(element: HTMLElement) {
         this.#element = element;
         this.#signed = false;
+        this.#toPush = null;
     }
 
     show(value: number): void {
-        this.#element.innerText = (this.#signed
-            ? helpers.toSigned(value)
-            : helpers.toUnsigned(value))
-            .toString();
+        this.#toPush = value;
     }
-    
+
     clear(): void {
-        this.#element.innerText = "";
+        this.#toPush = null;
     }
     
     signedMode(): void {
@@ -50,6 +55,17 @@ class NumberDisplay implements cpu.NumberDisplay {
     unsignedMode(): void {
         this.#signed = false;
     }
+
+    update(): void {
+        if (this.#toPush === null) {
+            this.#element.innerText = "";
+        } else {
+            this.#element.innerText = (this.#signed
+                ? helpers.toSigned(this.#toPush)
+                : helpers.toUnsigned(this.#toPush))
+                .toString();;
+        }
+    }
 }
 
 class Screen implements cpu.Screen {
@@ -58,6 +74,7 @@ class Screen implements cpu.Screen {
     #x;
     #y;
     #screen;
+    #toPush;
 
     constructor(canvas: HTMLCanvasElement) {
         this.#canvas = canvas;
@@ -65,6 +82,7 @@ class Screen implements cpu.Screen {
         this.#x = 0;
         this.#y = 0;
         this.#screen = Array.from({ length: 32 }, () => Array.from({ length: 32 }, () => false));
+        this.#toPush = this.#screen.concat([]);
 
         this.#ctx.fillStyle = "black";
         this.#ctx.fillRect(0, 0, this.#canvas.width, this.#canvas.height);
@@ -115,12 +133,16 @@ class Screen implements cpu.Screen {
     }
 
     push(): void {
+        this.#toPush = this.#screen.concat([]);
+    }
+
+    update(): void {
         this.#ctx.fillStyle = "black";
         this.#ctx.fillRect(0, 0, this.#canvas.width, this.#canvas.height);
 
         for (let y = 0; y < 32; y++) {
             for (let x = 0; x < 32; x++) {
-                if (!this.#screen[y][x]) {
+                if (!this.#toPush[y][x]) {
                     continue;
                 }
 
@@ -128,9 +150,12 @@ class Screen implements cpu.Screen {
                 this.#ctx.fillRect(x, y, 1, 1);
             }
         }
-
     }
 }
+
+const chars = new Chars(document.getElementById("chars")!);
+const numberDisplay = new NumberDisplay(document.getElementById("number-display")!);
+const screen = new Screen(document.getElementById("screen")! as HTMLCanvasElement);
 
 let vm = cpu.assemble(`
 // DVD logo demo
@@ -174,25 +199,14 @@ define BALL_DY 4
   str r15 r0 -6
   str r15 r0 -3
   jmp .loop
-`, new Chars(document.getElementById("chars")!), new NumberDisplay(document.getElementById("number-display")!), new Screen(document.getElementById("canvas")! as HTMLCanvasElement), null!);
+`, chars, numberDisplay, screen, null!);
 
-// const INSTRUCTIONS_PER_SECOND = 100000;
-const CYCLES_PER_FRAME = 100;
+const CYCLES_PER_FRAME = 10000;
 
 // ips = fps * cpf
 // cpf = ips / fps
 
-let lastTimestamp: number = 0;
-
-function render(timestamp: number) {
-    // if (lastTimestamp === 0) {
-    //     lastTimestamp = timestamp;
-    // }
-
-    // const DELTA_TIME_S = (timestamp - lastTimestamp) / 1000;
-    // const FRAMES_PER_SECOND = 1 / DELTA_TIME_S;
-    // const CYCLES_PER_FRAME = INSTRUCTIONS_PER_SECOND / FRAMES_PER_SECOND;
-
+function render() {
     if (vm.isHalted()) {
         console.log(vm);
         return;
@@ -207,7 +221,10 @@ function render(timestamp: number) {
         throw e;
     }
 
-    lastTimestamp = timestamp;
+    chars.update();
+    numberDisplay.update();
+    screen.update();
+
     requestAnimationFrame(render);
 }
 
