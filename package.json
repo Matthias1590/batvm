@@ -1,0 +1,12 @@
+{
+  "name": "batvm",
+  "version": "1.0.0",
+  "scripts": {
+    "watch": "tsc --watch"
+  },
+  "author": "Matthias Wijnsma",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}
