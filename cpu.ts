@@ -278,7 +278,7 @@ class Rsh implements Instruction {
     }
 
     run(): void {
-        this.#regA.setUnsigned(this.#regC.getUnsigned() >> 1);
+        this.#regC.setUnsigned(this.#regA.getUnsigned() >> 1);
     }
 }
 
