@@ -35,10 +35,9 @@ export function addWithCarry(left: number, right: number): { carry: boolean, res
 }
 
 export function subWithCarry(left: number, right: number): { carry: boolean, result: number } {
-    const diff = left - right;
-
+    const diff = left + (toUnsigned(~right)) + 1;
     return {
-        carry: left >= right,
+        carry: diff > 0xFF,
         result: diff & 0xFF
     };
 }
